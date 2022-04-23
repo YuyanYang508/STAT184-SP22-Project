@@ -5,3 +5,95 @@ date: '4/22/2022'
 output: html_notebook
 ---
 
+### Load Library and Data
+```{r message=FALSE,warning=FALSE}
+# library
+library(tidyverse)
+library(lubridate)
+
+# data
+ratings <- read_csv('./data/ratings.csv', show_col_types = FALSE)
+movies <- read_csv('./data/movies.csv', show_col_types = FALSE)
+tags <- read_csv('./data/tags.csv', show_col_types = FALSE)
+```
+
+### Data Wrangling (Initial) Chunk 1
+```{r message=FALSE,warning=FALSE}
+# convert time stamp in ratings
+ratings <- ratings %>%
+  mutate(rating_date = as_datetime(timestamp))
+
+# convert time stamp in tags
+tags <- tags %>%
+  mutate(tag_date = as_datetime(timestamp))
+
+# first 3 rows for ratings
+head(ratings,3)
+
+# first 3 rows for tags
+head(tags,3)
+```
+
+### Data Wrangling (Initial) Chunk 2
+```{r}
+# joins data where person both rated AND tagged movie. Then join movie info.
+join <- ratings %>%
+  inner_join(tags,by=c('userId','movieId')) %>%
+  inner_join(movies,by='movieId') %>%
+  select('userId', 'rating', 'rating_date', 'tag', 'tag_date', 'title', 'genres')
+
+# first 3 rows for join
+head(join,3)
+```
+
+### Data Wrangling (Initial) Chunk 3
+```{r}
+# move the year in the title variable to the new variable ‘release_year’ without parentheses
+newJoin <- join %>%
+  mutate(release_year = str_extract(title,"\\(\\d{4}\\)$")) %>%
+  mutate(title = gsub(pattern = "\\(\\d{4}\\)$", replacement = "", title)) %>%
+  mutate(release_year = gsub(pattern = "\\(", replacement = "", release_year)) %>%
+  mutate(release_year = gsub(pattern = "\\)", replacement = "", release_year))
+
+# first 3 rows for join
+head(newJoin,3)
+```
+
+### Data Visualization Chunk 1
+```{r}
+# (1) What were the top 10 rated movie genres? That is, what were the ten genres rated most frequently?
+# find out which genres are top 10 rated
+top10 <- newJoin %>%
+  group_by(genres) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count)) %>%
+  head(10)
+
+# using ggplot to make a barplot
+top10 %>%
+  ggplot(aes(x = reorder(genres,-count), y = count)) +
+  geom_bar(stat='identity') +
+  ggtitle('Top 10 Rated Movie Genres') +
+  xlab('Movie Genres') +
+  ylab('Rated Frequency')
+```
+
+**Interpretation**: The top 10 rated movie genres are Drama, Comedy|Crime|Drama|Thriller, Comedy, Drama|Romance, Action|Crime|Drama|Thriller, Comedy|Drama|Romance, Action|Adventure|Sci-Fi, Comedy|Romance, Documentary, Comedy|Drama. Lots of generes are overlapped, but I think I see an overall trend. People prefer Drama > Comedy > Action > Romance > Sci-fi > Documentary. This matches with my personal experience because I like drama and comedy as well. 
+
+### Data Visualization Chunk 2
+```{r}
+# The student should develop their own question and create a graph that answers that question plus meaninful, interpetive statement. The graph should include at least two variables, and use either color or fill options.
+top5 <- newJoin %>%
+  group_by(genres) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count)) %>%
+  head(5)
+
+newJoin %>%
+  filter(genres %in% top5$genres) %>%
+  filter(rating %in% c('1','3','5')) %>%
+  ggplot(aes(x = as.numeric(release_year))) +
+  geom_bar(aes(fill = genres)) +
+  facet_grid(~rating)
+```
+
