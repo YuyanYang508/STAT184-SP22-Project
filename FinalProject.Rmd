@@ -1,18 +1,20 @@
 ---
 title: "FinalProject"
-author: 'Yuyan Yang'
-date: '4/22/2022'
-output: html_notebook
+author: "Yuyan Yang"
+date: "4/22/2022"
+output:
+  html_document:
+    df_print: paged
 ---
 
 ### Load Library and Data
 
 ```{r message=FALSE,warning=FALSE}
-# library
+# loading library
 library(tidyverse)
 library(lubridate)
 
-# data
+# loading data
 ratings <- read_csv('./data/ratings.csv', show_col_types = FALSE)
 movies <- read_csv('./data/movies.csv', show_col_types = FALSE)
 tags <- read_csv('./data/tags.csv', show_col_types = FALSE)
@@ -20,8 +22,12 @@ tags <- read_csv('./data/tags.csv', show_col_types = FALSE)
 
 ### Data Wrangling (Initial) Chunk 1
 
+(1). Convert the timestamp data to the actual date in the ratings and tags files.
+
 ```{r message=FALSE,warning=FALSE}
 # convert time stamp in ratings
+# Since Timestamp represents seconds since midnight Coordinated Universal Time (UTC) of January 1, 1970.
+# I used as_datetime() from lubridate
 ratings <- ratings %>%
   mutate(rating_date = as_datetime(timestamp))
 
@@ -38,8 +44,12 @@ head(tags,3)
 
 ### Data Wrangling (Initial) Chunk 2
 
+(2). Create a new data object that joins data where person both rated AND tagged movie. Then join movie info.
+
 ```{r}
-# joins data where person both rated AND tagged movie. Then join movie info.
+# joins data where person both rated and tagged movie by 'userId' and 'movieId' using inner_join() becasue 'both'
+# then inner join movies by 'movieId'
+# only select the 7 variables we need for this assignment
 join <- ratings %>%
   inner_join(tags,by=c('userId','movieId')) %>%
   inner_join(movies,by='movieId') %>%
@@ -51,8 +61,16 @@ head(join,3)
 
 ### Data Wrangling (Initial) Chunk 3
 
+(3). move the year in the title variable to the new variable 'release_year' but without parentheses.
+
 ```{r}
-# move the year in the title variable to the new variable ‘release_year’ without parentheses
+# using mutate to create a new variable called release_year
+# and use str_extract() to extract pattern will there is 
+# four digits in parenthesis end of title
+# Then, deleted four digits in parenthesis end of title from 
+# the title variable using the same regex pattern
+# However, the str_extract() also store the parenthesis itself in the release_year variable
+# so, I use mutate to delete parenthesis '(' and ')' in release_year
 newJoin <- join %>%
   mutate(release_year = str_extract(title,"\\(\\d{4}\\)$")) %>%
   mutate(title = gsub(pattern = "\\(\\d{4}\\)$", replacement = "", title)) %>%
@@ -65,16 +83,19 @@ head(newJoin,3)
 
 ### Data Visualization Chunk 1
 
+(1). What were the top 10 rated movie genres? That is, what were the ten genres rated most frequently?
+
 ```{r}
-# (1) What were the top 10 rated movie genres? That is, what were the ten genres rated most frequently?
-# find out which genres are top 10 rated
+# First, find out which genres are top 10 rated using group_by genres 
+# and then summarise count and arrange in descending counts
+# and then only store the top10 in the new Object top10
 top10 <- newJoin %>%
   group_by(genres) %>%
   summarise(count = n()) %>%
   arrange(desc(count)) %>%
   head(10)
 
-# using ggplot to make a barplot
+# using ggplot to make a bar plot and order the genres in descending order of count
 top10 %>%
   ggplot(aes(x = reorder(genres,-count), y = count)) +
   geom_bar(stat='identity') +
@@ -83,16 +104,16 @@ top10 %>%
   ylab('Rated Frequency')
 ```
 
-**Interpretation**: The top 10 rated movie genres are Drama, Comedy\|Crime\|Drama\|Thriller, Comedy, Drama\|Romance, Action\|Crime\|Drama\|Thriller, Comedy\|Drama\|Romance, Action\|Adventure\|Sci-Fi, Comedy\|Romance, Documentary, Comedy\|Drama. Lots of generes are overlapped, but I think I see an overall trend. People prefer Drama \> Comedy \> Action \> Romance \> Sci-fi \> Documentary. This matches with my personal experience because I like drama and comedy as well.
+**Interpretation**: The top 10 rated movie genres are (1) Drama, (2) Comedy\|Crime\|Drama\|Thriller, (3) Comedy, (4) Drama\|Romance, (5) Action\|Crime\|Drama\|Thriller, (6) Comedy\|Drama\|Romance, (7) Action\|Adventure\|Sci-Fi, (8) Comedy\|Romance, (9) Documentary, (10) Comedy\|Drama. Lots of generes are overlapped, but I think I see an overall trend. People prefer Drama \> Comedy \> Action \> Romance \> Sci-fi \> Documentary. This matches with my personal experience because I like drama and comedy as well.
 
 ### Data Visualization Chunk 2
 
-Question: What is the relationship between top 5 tag and release year of those movie?
+(2). The student should develop their own question and create a graph that answers that question plus meaningful, interpretive statement. The graph should include at least two variables, and use either color or fill options.
+
+My Question: What is the relationship between top 5 tags, release year of movies in those tags, and their ratings?
 
 ```{r}
-# The student should develop their own question and create a graph that answers that question plus meaninful, interpetive statement. The graph should include at least two variables, and use either color or fill options.
-
-# find out what are the top 5 tags
+# find out what are the top 5 tags using the same technique we find top10 Genres in last question
 top5Tag <- newJoin %>%
   group_by(tag) %>%
   summarise(count = n()) %>%
@@ -100,26 +121,34 @@ top5Tag <- newJoin %>%
   head(5)
 
 # ggplot out tag vs. release year and color by ratings
+# filter the newJoin data frame with top 5 tags
+# then, filter the rating with integers because the data contain decimal rating like '4.5'
+# I want to keep things simpler, so I only include integer rating
+# then I leftjoin() the top5Tag because I want to have count of each tag to arrange bars later
+# then I used tag as x-axis (tags in descending order by count) and release year as y-axis
+# using geom_boxplot() to draw the plot and fill by rating of movies
+# I also break the y-axis to more detailed years (10 years) to improve the interpretability of the graph
 newJoin %>%
   filter(tag %in% top5Tag$tag) %>%
   filter(rating %in% c('1','2','3','4','5')) %>%
-  ggplot(aes(x = tag, y = as.numeric(release_year))) +
+  left_join(top5Tag,by='tag') %>%
+  ggplot(aes(x = reorder(tag,-count), y = as.numeric(release_year))) +
   geom_boxplot(aes(fill = factor(rating))) +
   scale_y_continuous(n.breaks = 10) +
   ggtitle('Top 5 Movie Tag vs. Release Year of Movies') +
-  xlab('Top 5 Movie Tags') +
+  xlab('Top 5 Movie Tags in Descending Order') +
   ylab('Release Year of Movies') +
   scale_fill_discrete(name = "Ratings of movie")
 ```
 
-**Interpretation**: From the Above Figure, we can clearly see that atmospheric and funny movies are mostly released in recent decades (after 1990s). From the box plots of Disney tag, we can also see that with the increase in release year, the ratings of movie is also improving. The Disney tagged movie released in 1940s to 1970s mainly has a relatively low rating (2 or 3); however, after 1970s, it start to earn 4 and 5 ratings. Another interesting finding is that 'In Netflix queue' tag indicates that netflix cover some verly old movies like movie released in 1940s.
+**Interpretation**: First, the top5 most popular movie tags are (1) In Netflix queue, (2) atmospheric, (3) Disney, (4) funny, (5) superhero. From the Above Figure, we can clearly see that atmospheric and funny movies are mostly released in recent decades (after 1990s). From the box plots of Disney tag, we can also see that with the increase in release year, the ratings of movie is also improving. The Disney tagged movie released in 1940s to 1970s mainly has a relatively low rating (2 or 3); however, after 1970s, it start to earn 4 and 5 ratings. Another interesting finding is that 'In Netflix queue' tag indicates that Netflix cover some very old movies like ones released in 1940s.
 
 ### Resources
 
--   I used this link to findout how to break y-axis into more detailed numbers in ### Data Visualization Chunk 2
+-   I used this link to find out how to break y-axis into more detailed numbers in the Data Visualization Chunk 2
 
     -   <https://stackoverflow.com/questions/11335836/increase-number-of-axis-ticks>
 
 ### Github Repo
 
-https://github.com/YuyanYang508/STAT184-SP22-Project
+<https://github.com/YuyanYang508/STAT184-SP22-Project>
