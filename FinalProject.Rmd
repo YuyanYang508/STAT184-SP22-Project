@@ -15,31 +15,31 @@ library(tidyverse)
 library(lubridate)
 
 # loading data
-ratings <- read_csv('./data/ratings.csv', show_col_types = FALSE)
-movies <- read_csv('./data/movies.csv', show_col_types = FALSE)
-tags <- read_csv('./data/tags.csv', show_col_types = FALSE)
+Ratings <- read_csv('./data/ratings.csv', show_col_types = FALSE)
+Movies <- read_csv('./data/movies.csv', show_col_types = FALSE)
+Tags <- read_csv('./data/tags.csv', show_col_types = FALSE)
 ```
 
 ### Data Wrangling (Initial) Chunk 1
 
-(1). Convert the timestamp data to the actual date in the ratings and tags files.
+(1). Convert the timestamp data to the actual date in the Ratings and tags files.
 
 ```{r message=FALSE,warning=FALSE}
-# convert time stamp in ratings
+# convert time stamp in Ratings
 # Since Timestamp represents seconds since midnight Coordinated Universal Time (UTC) of January 1, 1970.
 # I used as_datetime() from lubridate
-ratings <- ratings %>%
+Ratings <- Ratings %>%
   mutate(rating_date = as_datetime(timestamp))
 
-# convert time stamp in tags
-tags <- tags %>%
+# convert time stamp in Tags
+Tags <- Tags %>%
   mutate(tag_date = as_datetime(timestamp))
 
-# first 3 rows for ratings
-head(ratings,3)
+# first 3 rows for Ratings
+head(Ratings,3)
 
-# first 3 rows for tags
-head(tags,3)
+# first 3 rows for Tags
+head(Tags,3)
 ```
 
 ### Data Wrangling (Initial) Chunk 2
@@ -50,13 +50,13 @@ head(tags,3)
 # joins data where person both rated and tagged movie by 'userId' and 'movieId' using inner_join() becasue 'both'
 # then inner join movies by 'movieId'
 # only select the 7 variables we need for this assignment
-join <- ratings %>%
-  inner_join(tags,by=c('userId','movieId')) %>%
-  inner_join(movies,by='movieId') %>%
+Join <- Ratings %>%
+  inner_join(Tags,by=c('userId','movieId')) %>%
+  inner_join(Movies,by='movieId') %>%
   select('userId', 'rating', 'rating_date', 'tag', 'tag_date', 'title', 'genres')
 
 # first 3 rows for join
-head(join,3)
+head(Join,3)
 ```
 
 ### Data Wrangling (Initial) Chunk 3
@@ -71,14 +71,14 @@ head(join,3)
 # the title variable using the same regex pattern
 # However, the str_extract() also store the parenthesis itself in the release_year variable
 # so, I use mutate to delete parenthesis '(' and ')' in release_year
-newJoin <- join %>%
+NewJoin <- Join %>%
   mutate(release_year = str_extract(title,"\\(\\d{4}\\)$")) %>%
   mutate(title = gsub(pattern = "\\(\\d{4}\\)$", replacement = "", title)) %>%
   mutate(release_year = gsub(pattern = "\\(", replacement = "", release_year)) %>%
   mutate(release_year = gsub(pattern = "\\)", replacement = "", release_year))
 
 # first 3 rows for join
-head(newJoin,3)
+head(NewJoin,3)
 ```
 
 ### Data Visualization Chunk 1
@@ -88,15 +88,15 @@ head(newJoin,3)
 ```{r}
 # First, find out which genres are top 10 rated using group_by genres 
 # and then summarise count and arrange in descending counts
-# and then only store the top10 in the new Object top10
-top10 <- newJoin %>%
+# and then only store the Top10 in the new Object Top10
+Top10 <- NewJoin %>%
   group_by(genres) %>%
   summarise(count = n()) %>%
   arrange(desc(count)) %>%
   head(10)
 
 # using ggplot to make a bar plot and order the genres in descending order of count
-top10 %>%
+Top10 %>%
   ggplot(aes(x = reorder(genres,-count), y = count)) +
   geom_bar(stat='identity') +
   ggtitle('Top 10 Rated Movie Genres') +
@@ -113,25 +113,25 @@ top10 %>%
 My Question: What is the relationship between top 5 tags, release year of movies in those tags, and their ratings?
 
 ```{r}
-# find out what are the top 5 tags using the same technique we find top10 Genres in last question
-top5Tag <- newJoin %>%
+# find out what are the top 5 tags using the same technique we find Top10 Genres in last question
+Top5Tag <- NewJoin %>%
   group_by(tag) %>%
   summarise(count = n()) %>%
   arrange(desc(count)) %>%
   head(5)
 
-# ggplot out tag vs. release year and color by ratings
-# filter the newJoin data frame with top 5 tags
+# ggplot out tag vs. release year and color by Ratings
+# filter the NewJoin data frame with top 5 tags
 # then, filter the rating with integers because the data contain decimal rating like '4.5'
 # I want to keep things simpler, so I only include integer rating
-# then I leftjoin() the top5Tag because I want to have count of each tag to arrange bars later
+# then I leftjoin() the Top5Tag because I want to have count of each tag to arrange bars later
 # then I used tag as x-axis (tags in descending order by count) and release year as y-axis
 # using geom_boxplot() to draw the plot and fill by rating of movies
 # I also break the y-axis to more detailed years (10 years) to improve the interpretability of the graph
-newJoin %>%
-  filter(tag %in% top5Tag$tag) %>%
+NewJoin %>%
+  filter(tag %in% Top5Tag$tag) %>%
   filter(rating %in% c('1','2','3','4','5')) %>%
-  left_join(top5Tag,by='tag') %>%
+  left_join(Top5Tag,by='tag') %>%
   ggplot(aes(x = reorder(tag,-count), y = as.numeric(release_year))) +
   geom_boxplot(aes(fill = factor(rating))) +
   scale_y_continuous(n.breaks = 10) +
