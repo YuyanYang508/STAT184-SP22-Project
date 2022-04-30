@@ -20,7 +20,7 @@ Movies <- read_csv('./data/movies.csv', show_col_types = FALSE)
 Tags <- read_csv('./data/tags.csv', show_col_types = FALSE)
 ```
 
-### Data Wrangling (Initial) Chunk 1
+### Data Wrangling (Initial) 1. Change Timestamp
 
 (1). Convert the timestamp data to the actual date in the Ratings and tags files.
 
@@ -42,12 +42,12 @@ head(Ratings,3)
 head(Tags,3)
 ```
 
-### Data Wrangling (Initial) Chunk 2
+### Data Wrangling (Initial) 2. Join Ratings, Tags, and Movie Info
 
 (2). Create a new data object that joins data where person both rated AND tagged movie. Then join movie info.
 
 ```{r}
-# joins data where person both rated and tagged movie by 'userId' and 'movieId' using inner_join() becasue 'both'
+# joins data where person both rated and tagged movie by 'userId' and 'movieId' using inner_join() because 'both'
 # then inner join movies by 'movieId'
 # only select the 7 variables we need for this assignment
 Join <- Ratings %>%
@@ -59,7 +59,7 @@ Join <- Ratings %>%
 head(Join,3)
 ```
 
-### Data Wrangling (Initial) Chunk 3
+### Data Wrangling (Initial) 3. Create Release Year
 
 (3). move the year in the title variable to the new variable 'release_year' but without parentheses.
 
@@ -81,7 +81,7 @@ NewJoin <- Join %>%
 head(NewJoin,3)
 ```
 
-### Data Visualization Chunk 1
+### Data Visualization 1. Top 10 Genres
 
 (1). What were the top 10 rated movie genres? That is, what were the ten genres rated most frequently?
 
@@ -101,12 +101,13 @@ Top10 %>%
   geom_bar(stat='identity') +
   ggtitle('Top 10 Rated Movie Genres') +
   xlab('Movie Genres') +
-  ylab('Rated Frequency')
+  ylab('Rated Frequency') +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 **Interpretation**: The top 10 rated movie genres are (1) Drama, (2) Comedy\|Crime\|Drama\|Thriller, (3) Comedy, (4) Drama\|Romance, (5) Action\|Crime\|Drama\|Thriller, (6) Comedy\|Drama\|Romance, (7) Action\|Adventure\|Sci-Fi, (8) Comedy\|Romance, (9) Documentary, (10) Comedy\|Drama. Lots of generes are overlapped, but I think I see an overall trend. People prefer Drama \> Comedy \> Action \> Romance \> Sci-fi \> Documentary. This matches with my personal experience because I like drama and comedy as well.
 
-### Data Visualization Chunk 2
+### Data Visualization 2. Self Developed Question
 
 (2). The student should develop their own question and create a graph that answers that question plus meaningful, interpretive statement. The graph should include at least two variables, and use either color or fill options.
 
